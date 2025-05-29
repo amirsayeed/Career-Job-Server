@@ -30,6 +30,7 @@ async function run() {
         //     ping: 1
         // });
         const jobsCollection = client.db("careerJob").collection("jobs");
+        const applicationsCollection = client.db("careerJob").collection("applications");
 
         app.get('/jobs', async (req, res) => {
             const result = await jobsCollection.find().toArray();
@@ -42,6 +43,15 @@ async function run() {
                 _id: new ObjectId(id)
             };
             const result = await jobsCollection.findOne(query);
+            res.send(result);
+        })
+
+        //job_applications
+
+        app.post('/applications', async (req, res) => {
+            const application = req.body;
+            console.log(application);
+            const result = await applicationsCollection.insertOne(application);
             res.send(result);
         })
 
