@@ -54,6 +54,17 @@ async function run() {
                 applicant: email
             };
             const result = await applicationsCollection.find(query).toArray();
+
+            for (const application of result) {
+                const jobId = application.jobId;
+                const jobQuery = {
+                    _id: new ObjectId(jobId)
+                };
+                const job = await jobsCollection.findOne(jobQuery);
+                application.title = job.title;
+                application.company = job.company;
+                application.company_logo = job.company_logo;
+            }
             res.send(result);
         })
 
