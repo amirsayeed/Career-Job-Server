@@ -5,14 +5,44 @@ const {
     ServerApiVersion,
     ObjectId
 } = require('mongodb');
-const jwt = require('jsonwebtoken')
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
 const port = process.env.PORT || 5000;
 require('dotenv').config()
 
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173'],
+    credentials: true
+}));
 app.use(express.json());
+app.use(cookieParser());
 
+const logger = (req, res, next) => {
+    console.log('inside the middleware');
+    next();
+}
+
+const verifyToken = (req, res, next) => {
+    const token = req?.cookies?.token;
+    console.log('cookie in the middleware', token);
+    if (!token) {
+        return res.status(401).send({
+            message: 'unauthorized access'
+        })
+    }
+
+    jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
+        if (err) {
+            return res.status(401).send({
+                message: 'unauthorized access'
+            })
+        }
+        req.decoded = decoded
+        console.log(decoded);
+        next();
+    })
+}
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tnmpmcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -35,17 +65,18 @@ async function run() {
 
         //jwt token related api
         app.post('/jwt', async (req, res) => {
-            const {
-                email
-            } = req.body;
-            const user = {
-                email
-            };
-            const token = jwt.sign(user, 'secret', {
-                expiresIn: '1h'
+            const userData = req.body;
+            const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
+                expiresIn: '1d'
             });
+
+            res.cookie('token', token, {
+                httpOnly: true,
+                secure: false
+            })
+
             res.send({
-                token
+                success: true
             });
         })
 
@@ -98,8 +129,15 @@ async function run() {
 
         //job_applications
 
-        app.get('/applications', async (req, res) => {
+        app.get('/applications', logger, verifyToken, async (req, res) => {
             const email = req.query.email;
+            if (email !== req.decoded.email) {
+                return res.status(403).send({
+                    message: 'forbidden access'
+                })
+            }
+            console.log('inside applications', req.cookies)
+
             const query = {
                 applicant: email
             };
