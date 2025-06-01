@@ -18,6 +18,16 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+
+var admin = require("firebase-admin");
+
+var serviceAccount = require("./firebase-admin-key.json");
+
+admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+});
+
+
 const logger = (req, res, next) => {
     console.log('inside the middleware');
     next();
@@ -42,6 +52,20 @@ const verifyToken = (req, res, next) => {
         console.log(decoded);
         next();
     })
+}
+
+const verifyFirebaseToken = async (req, res, next) => {
+    const authHeader = req.headers?.authorization;
+    const token = authHeader.split(' ')[1];
+    if (!token) {
+        return res.status(401).send({
+            message: 'unauthorized access'
+        });
+    }
+    const userInfo = await admin.auth().verifyIdToken(token);
+    console.log('inside the token', userInfo)
+    req.tokenEmail = userInfo.email
+    next();
 }
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.tnmpmcr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
@@ -129,14 +153,20 @@ async function run() {
 
         //job_applications
 
-        app.get('/applications', logger, verifyToken, async (req, res) => {
+        app.get('/applications', logger, verifyFirebaseToken, async (req, res) => {
             const email = req.query.email;
-            if (email !== req.decoded.email) {
+            // if (email !== req.decoded.email) {
+            //     return res.status(403).send({
+            //         message: 'forbidden access'
+            //     })
+            // }
+            // console.log('inside applications', req.cookies)
+
+            if (req.tokenEmail !== email) {
                 return res.status(403).send({
                     message: 'forbidden access'
                 })
             }
-            console.log('inside applications', req.cookies)
 
             const query = {
                 applicant: email
