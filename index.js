@@ -12,16 +12,22 @@ const port = process.env.PORT || 5000;
 require('dotenv').config()
 
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: [
+        "http://localhost:5173",
+        "https://career-job-guide.web.app",
+        "https://career-job-guide.firebaseapp.com"
+    ],
     credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
 
-var admin = require("firebase-admin");
+const admin = require("firebase-admin");
 
-var serviceAccount = require("./firebase-admin-key.json");
+const decoded = Buffer.from(process.env.FB_SERVICE_KEY, 'base64').toString('utf8')
+
+const serviceAccount = JSON.parse(decoded);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount)
@@ -33,26 +39,26 @@ const logger = (req, res, next) => {
     next();
 }
 
-const verifyToken = (req, res, next) => {
-    const token = req?.cookies?.token;
-    console.log('cookie in the middleware', token);
-    if (!token) {
-        return res.status(401).send({
-            message: 'unauthorized access'
-        })
-    }
+// const verifyToken = (req, res, next) => {
+//     const token = req?.cookies?.token;
+//     console.log('cookie in the middleware', token);
+//     if (!token) {
+//         return res.status(401).send({
+//             message: 'unauthorized access'
+//         })
+//     }
 
-    jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
-        if (err) {
-            return res.status(401).send({
-                message: 'unauthorized access'
-            })
-        }
-        req.decoded = decoded
-        console.log(decoded);
-        next();
-    })
-}
+//     jwt.verify(token, process.env.JWT_ACCESS_SECRET, (err, decoded) => {
+//         if (err) {
+//             return res.status(401).send({
+//                 message: 'unauthorized access'
+//             })
+//         }
+//         req.decoded = decoded
+//         console.log(decoded);
+//         next();
+//     })
+// }
 
 const verifyFirebaseToken = async (req, res, next) => {
     const authHeader = req.headers?.authorization;
@@ -105,21 +111,21 @@ async function run() {
         const applicationsCollection = client.db("careerJob").collection("applications");
 
         //jwt token related api
-        app.post('/jwt', async (req, res) => {
-            const userData = req.body;
-            const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
-                expiresIn: '1d'
-            });
+        // app.post('/jwt', async (req, res) => {
+        //     const userData = req.body;
+        //     const token = jwt.sign(userData, process.env.JWT_ACCESS_SECRET, {
+        //         expiresIn: '1d'
+        //     });
 
-            res.cookie('token', token, {
-                httpOnly: true,
-                secure: false
-            })
+        //     res.cookie('token', token, {
+        //         httpOnly: true,
+        //         secure: false
+        //     })
 
-            res.send({
-                success: true
-            });
-        })
+        //     res.send({
+        //         success: true
+        //     });
+        // })
 
         //jobs api
         app.get('/jobs', async (req, res) => {
@@ -230,7 +236,7 @@ async function run() {
             res.send(result);
         })
 
-        console.log("Pinged your deployment. You successfully connected to MongoDB!");
+        // console.log("Pinged your deployment. You successfully connected to MongoDB!");
     } finally {
 
     }
